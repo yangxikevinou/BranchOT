@@ -1,0 +1,606 @@
+\documentclass[fleqn]{article}
+
+\usepackage{fullpage,amsmath,amsthm,amssymb,polynom,stmaryrd,tikz,pgfplots,epsfig,enumerate,bbm}
+\usepackage{hyperref,titling,pdfpages,setspace}
+\usepackage[left=0.7cm,right=0.7cm]{geometry}
+\usepackage{tikz-cd}
+
+% theorem environment
+\newtheorem{thm}{Theorem}[section]
+\newtheorem{prop}[thm]{Proposition}
+ 
+\theoremstyle{definition}
+\newtheorem{defn}[thm]{Definition}
+\newtheorem{prob}[thm]{Problem}
+ 
+\theoremstyle{remark}
+\newtheorem{rem}[thm]{Remark}
+
+
+% commands for convenience
+\AtBeginDocument{
+	\renewcommand{\d}{\,\mathrm{d}} % differential
+	\newcommand{\linf}[1][n]{\underline{\lim}_{#1\rightarrow\infty}} % lim inf as i goes to infinity
+    \newcommand{\lsup}[1][n]{\overline{\lim}_{#1\rightarrow\infty}} % lim sup as i goes to infinity
+	\renewcommand{\l}[1][n]{\lim_{#1\rightarrow\infty}} % lim as i goes to infinity
+	\renewcommand{\S}[1][1]{\sum_{n=#1}^\infty} % sum from 1 to infinity
+	\renewcommand{\P}{\mathcal{P}} % space of probability measures
+	\renewcommand{\H}{\mathcal{H}^1} % 1-dim Hausdorff measure
+	\newcommand{\wstar}{\stackrel{*}{\rightharpoonup}} % w-* convergence
+	\newcommand{\supp}{\mathrm{supp}\,} % support of a function or measure
+    \newcommand{\sgn}{\mathrm{sgn}\,} % sign/direction of a vector
+}
+
+
+\setlength{\mathindent}{0pt}
+\setlength{\parskip}{2ex}
+\setlength{\parindent}{0pt}
+
+\widowpenalty=10000
+\clubpenalty=10000
+
+
+%%%%%%%%%%%%%%%%%%
+% info
+\title{An Intuitive Introduction to Branched Optimal Transport}
+\author{Yangxi Ou \\* Department of Mathematical Sciences \\* Carnegie Mellon University}
+\date{\today}
+\hypersetup{bookmarksnumbered=true,     
+						bookmarksopen=true,
+						unicode=true,
+            pdftitle=\thetitle,
+            pdfauthor=Yangxi Ou,
+            pdfstartview=FitH,
+						pdfpagemode=UseOutlines}
+						
+						
+%%%%%%%%%%%%%%%%%%%
+
+\begin{document}
+
+\begin{center}	
+	\textbf{\Large \thetitle} \\*[5ex]
+	\theauthor \\*[5ex]
+	Center for Nonlinear Analysis Working Group, April 26th, 2016 \\*[5ex]
+	\tableofcontents
+\end{center}
+	
+\vspace{10ex}
+
+\doublespacing
+
+\section{Meta-discussion of Optimal Transport and Structure of the Document} \label{sec:meta}
+Before we explore the specialized subject of branched optimal transport, let's back-off and reconsider the REAL WORLD problem of minimizing costs of transporting goods in general, which originally motivated the study of optimal transport. Suppose that we are running a courier service (e.g. UPS or FedEx), and really need to minimize the ACTUAL cost of transportation (disregarding investments such as building distribution centers, buying vehicles and etc.). The actual cost is incurred during the PHYSICAL PROCESS of transportation and depends on a great number of factors including the the locations of pick-up and drop-off, the paths traveled among different locations, the quantities and types of goods at each location and along each path, the numbers of vehicles along each path, the trip logs (mainly velocities and accelerations) of each vehicles, the hours to transport (e.g. rush hour or not), and many others. So as (micro)managers hoping to have greater control over the actual costs, we should tell our drivers the physical transportation processes in details as above. In the language of fluid dynamics, we should ULTIMATELY find generalized flows (to characterize the transportation processes), in either Lagrangian or Eulerian coordinates. However, finding an optimal flow (should it exist) directly is a very challenging task. To tackle the minimizing problem, we as managers can first make some ASSUMPTIONS (whether realistic or not) to reduce the complexity of the problem, ignoring several factors (or deeming them as ``irrelevant'') such as hours of transportation and trip logs, and focusing on a few key factors that matters more such as locations of pick-up and drop-off and paths among these locations. Such simplification (re)formulates the cost minimizing problem, defining the admissible controls and cost functionals (on key factors). For example, the key factor in Monge's formulation is transport map, i.e. we only cares about the source and the target. The implicit assumptions in Monge include but are not limited to the following: the quantities of sources always match those of targets for optimal transport map; there is always a geodesic between any pair of locations, and the path is always a geodesic; transporting vehicles do not matter. After solving for the optimal key factors in the simplified problem (provided it has a solution), we have to REALIZE the solution by recovering other ``irrelevant'' factors, and eventually generate the flow or transportation process (if possible), such that if drivers follow the process, the cost actually incurred is the same as the minimal cost in the simplified problem. Moreover, we also expect that if any driver deviates from the ``optimal'' process we design, even the smartest one will not decrease the minimal cost in the simplified problem. In the case of Monge above, the transport map associates each source with a unique target, and we use geodesics between sources and targets to create the optimal flow. Note that all the steps above may not be carried out if our reformulation is problematic. Moreover, even if we could follow the steps above without difficulties, we could still obtain a strictly suboptimal transportation process in real world if the simplified problem is not realistic. Hence, a reasonable reformulation of the cost minimizing problem should at least possess the following four properties:
+\begin{enumerate}
+	\item (Tractability) the simplified problem is tractable;
+	\item (Existence) the simplified problem has a solution;
+	\item (Recoverability) an ``optimal'' flow (within a certain class) can be recovered, and the ``actual'' cost coincides with the ``simplified'' cost under the ``optimal'' flow;
+	\item (Underestimation) the assumptions capture the main features of the real world problem such that other physically possible flows (outside the assumed class) incur actual costs no smaller than the minimal ``simplified'' cost.
+\end{enumerate}
+
+\par
+Applying the framework above, this document introduces the problem of branched optimal transport as follows. Section~\ref{sec:motivate} points out that a main feature in reality, namely economy of scale, is omitted in the traditional Monge-Kantorovich formulation, which does not have the fourth desired property underestimation. As a consequence, it is not suitable to consider transport plan alone in our simplification, and we move to the next level to consider transport path directly, which contains more information than transport plan. Section~\ref{sec:setup} gives some technical global assumptions, and rigorously defines the admissible controls and the cost functional for the simplified problem (i.e. branched optimal transport) proposed in Section~\ref{sec:motivate}, beginning with the discrete case. By restating the discrete problem in the language of measure theory, we heuristically lift up the definition of branched optimal transport problem to the general case, leaving some holes to be filled in later sections. Going back to the discrete case, Section~\ref{sec:discrete} shows some obvious but useful apriori properties of certain solutions, and finally leads to the existence of solutions in discrete case. Builds on the previous sections, Section~\ref{sec:general} gives the general existence result and a new metrization of weak-* topology on probabilities via branched optimal transport costs, which echoes the second desired property existence. This document culminates in Section~\ref{sec:geodesic} by recovering the optimal flow of branched optimal transport, hence finishing the last step of the framework above. This result also demonstrates that the induced metric space is geodesic.
+
+\par
+This document emphasizes the formulation of branched optimal transport in discrete case, the standard techniques and core properties in calculus of variations used to generalize the discrete case, and the intuitions behind each propositions and theorems. Proofs are sketchy (with minimal mistakes), and notations are heavily abused (with minimal misunderstandings). The main contents are adapted from papers \cite{Xia2003a, Xia2015} by Xia, and the book ``Optimal Transport for Applied Mathematicians''\cite{OTAM} by Santambrogio.
+
+
+\section{Motivation of Branched Optimal Transport} \label{sec:motivate}
+The most well-known problem of optimal transport is formulated by Kantorovich as follows:
+$$ \inf \left\{\int_{X \times Y} c(x,y) \d\gamma(x,y) | {\pi_x}_\# \gamma = \mu, {\pi_y}_\# \gamma = \nu \right\}, \quad \textrm{given } c:X\times Y \rightarrow \mathbb{R}_+, \, \mu\in\P(X), \, \nu\in\P(Y).$$
+The function $c$ encodes the cost of transporting unit mass from the source $x\in X$ to the target $y\in Y$, while the probabilities $\mu\in\P(X)$ and $\nu\in\P(Y)$ gives the mass distribution of sources and targets. The abstracted key factors here considered is the transport plan $\gamma$, specifying how much mass should be moved from $x$ to $y$. Note that Kantorovich's cost functional is linear in the sense that the cost of transporting two goods in one vehicle is the same as driving two vehicles with one good in each, i.e. 
+$$ \gamma=\gamma_1+\gamma_2 \Rightarrow \int_{X \times Y} c(x,y) \d\gamma(x,y) = \int_{X \times Y} c(x,y) \d\gamma_1(x,y) + \int_{X \times Y} c(x,y) \d\gamma_2(x,y).$$
+``Obviously'', this assumption/property contradicts the usual observation/intuition that it is more cost efficient to pack multiple goods within a single vehicle due to ECONOMY OF SCALE (one possible explanation is fixed costs versus  variable costs). Mathematically speaking, the transportation cost as a function of quantity is subadditive or CONCAVE, rather than linear. In discrete case, one could tentatively write out the total costs as $\sum_{(x,y)\in X\times Y} c(x,y) f\left(\gamma(x,y)\right)$, where $f$ is concave. However, this formula fails to tell the whole story. Concave cost function provides cost saving opportunities by combining goods together, at the expenses of longer trips. As long as the cost reduced of aggregation overweighs the additional cost of extra miles, there is a better flow deviating from the geodesic flow induced by Kantorovich optimal transport plan. Hence with concave cost, given a Kantorovich optimal transport plan, the induced ``optimal'' path is indeed not optimal, and the actual cost will be path dependent. In our framework, Kantorovich fails the fourth desired property underestimation, although it satisfies the first three. This drawback of Kantorovich prompts us to consider transport path directly as our key factors (admissible controls), and find the cost functional defined on transport paths.
+
+\par
+It is helpful to look at an example before we (re-)formulate our new optimal transport problem. Now suppose that regardless of the quantities being transported, the transportation cost is always one per unit distance traveled. We are faced with two distributions of sources and targets:
+\begin{enumerate}
+	\item source $\frac{1}{2}\delta_{(-10^6,10^2)}+ \frac{1}{2}\delta_{(10^6,10^2)}$;
+		target $\frac{1}{2}\delta_{(-10^6,-10^2)}+ \frac{1}{2}\delta_{(10^6,-10^2)}$.
+	\item source $\frac{1}{2}\delta_{(-1,10^2)}+ \frac{1}{2}\delta_{(1,10^2)}$;
+		target $\frac{1}{2}\delta_{(-1,10^2)}+ \frac{1}{2}\delta_{(1,10^2)}$.
+\end{enumerate}
+The goal is to find the cheapest path transporting goods from sources to targets, or equivalently in this case, to find the shortest path connecting sources and targets.
+Intuitively, the optimal solution to the first problem consists of two vertical straight lines, while the second looks like a tree, in that the path first combines the sources together in a hub somewhere nearby, travels in a straight line to a distribution center near the targets and then branches to either target. Note that similar (but more complicated) phenomenon shown above also appears in Plateau's problem, i.e. minimal surfaces.
+\par
+This is indeed a classical combinatorial problem called Steiner's Minimal Tree Problem, a special case of branched optimal transport, which will be introduced in the next section.
+
+
+
+\section{Set-up of Branched Optimal Transport: from Discrete to General} \label{sec:setup}
+We are about to formalize the intuitions above. For convenience and simplicity, in the entire document, we only consider transportation within compact convex subsets of Euclidean spaces, which is geodesic. Let $X \subset \mathbb{R}^m$ be such a set, denote the space of probabilities on $X$ by $\P(X)$, and the space of atomic probabilities on $X$ by $\P_a(X)$. We call the case of both atomic sources and targets discrete, and define the transport path and the cost functional in discrete case first, just like how we develop probability theory via the standard machine.
+
+\par
+In the following, let's fix two atomic probabilities on $X$, $A^+ :=\sum_{i=1}^k a_i \delta_{x_i}$ and $B^- :=\sum_{j=1}^l b_j \delta_{y_j}$, with $a_i,b_j>0, \forall i,j$, and $\sum_{i=1}^k a_i=1=\sum_{j=1}^l b_j$.
+
+\begin{defn}[Discrete transport path as graph]
+A discrete transport path from the source probability $A^+$ to the target probability $B^-$ is a weighted directed graph $G:=(V,E,w)$, where $V\subset X$ is the vertex set, $E\subseteq V\times V$ is the edge set, and $w:E\rightarrow\mathbb{R}_{++}$ is the weight function on edges, satisfying the following:
+\begin{enumerate}	
+	\item (Inclusion of sources and targets) $V \supseteq \supp A^+ \cup \supp B^- = \{x_i,y_j | i\in[k], j\in[l]\}$, which are called (path) boundary vertices, and other vertices are called (path) interior vertices;
+	\item (Non-degeneracy) $\left\{ v\in V \,\big|\, \deg v=0 \right\} \subseteq \supp A^+ \cup \supp B^- = \{x_i,y_j | i\in[k], j\in[l]\}$;
+    \item (Kirchoff's Law) $\underbrace{\sum_{x_i=v} a_i + \sum_{e^+=v} w(e)}_{\textrm{influx}} = \underbrace{\sum_{y_j=v} b_j + \sum_{e^-=v} w(e)}_{\textrm{outflux}}, \forall v\in V$, where an edge is represented as $(e^-,e^+)=e\in E$.
+\end{enumerate}
+The set of all discrete transport paths from $A^+$ to $B^-$ is denoted by $Path_a(A^+,B^-)$.
+\end{defn}
+
+Here are some comments to the definition.
+\begin{enumerate}
+	\item The notation is chosen carefully in that a superscript $+$ indicates increase of mass (source or inflow) while a superscript $-$ indicates decrease of mass (target or outflow).
+	\item Weight function is required to be strictly positive to rule out degeneracy, but it does not make a huge difference to include the degenerate case. Indeed, we need to blur the codomain of weight function to include non-positive values in the proof of existence of optimal discrete path.
+	\item Kirchoff's Law/equation (for circuits) is conservation of mass at vertices. It is different from the classical one at the boundary vertices to account for sources and targets.
+\end{enumerate}
+
+Discrete transport paths play the role of simple functions in Lebesgue integration, hence the next step is to define the counterpart of integration of simple functions, namely the discrete cost functional. Mimicking the definition of $L^p$-integrability, we restrict the form of cost per unit distance as a function of quantity to be a power function, with exponent $\alpha \in[0,1]$, so that it is concave as desired.
+
+\begin{defn}[Discrete cost functional]
+Let $\alpha \in[0,1]$, and $G\in Path_a(A^+,B^-)$ be a discrete transport path from the source probability $A^+$ to the target probability $B^-$. Define the $\alpha$-cost functional of $G$ to be
+$$M_a^\alpha(G) := \sum_{e\in E} w(e)^\alpha |e^+ - e^-|.$$
+\end{defn}
+
+The cost minimization problem then arises naturally.
+\begin{prob}[Discrete minimization]\label{prob:discrete}
+Given $\alpha \in[0,1]$, $A^+, B^- \in \P_a(X)$, solve for
+$$\inf_{G\in Path_a(A^+,B^-)} M_a^\alpha(G) =: d_a^\alpha(A^+,B^-) \in [0,\infty).$$
+\end{prob}
+
+\begin{rem}[Special cases]\label{rem:special}
+\begin{enumerate}
+	\item If $\alpha=1$, then the problem above reduces to Kantorovich problem, with $c(x,y)=|x-y|$.
+	\item If $\alpha=0$, then the problem above reduces to Steiner's Minimal Tree problem.
+\end{enumerate}
+We shall see later that both boundary cases will be useful for general $\alpha\in(0,1)$, giving us bounds on $M_a^\alpha$ to run the standard machine of minimization.
+\end{rem}
+
+Before solving Problem~\ref{prob:discrete}, we reword the discrete combinatorial problem above into a general analysis problem. Albeit a remark, the following is probably the MOST IMPORTANT technical part of the document, as other parts of the document ``simply'' follow naturally by applying standard techniques in analysis.
+\begin{rem}[Equivalent formulation in measures]\label{rem:eqv}
+Recall that a discrete transport path is a weighted directed graph $G=(V,E,w)$ with certain constraints. Non-degeneracy says that we can recover the vertex set from the edge set, so we only need to encode the information of edges and their weights. We need lengths of edges to compute $\alpha$-cost functional, but $|e^+ -e^-|=\H(e)=\H\upharpoonright_e(\mathbb{R}^m)$. To incorporate the direction of the edge, we denote the edge by $\llbracket e\rrbracket=\H\upharpoonright_e \sgn(e^+ -e^-)=\H\upharpoonright_e \frac{e^+ -e^-}{|e^+ -e^-|}$, which is a vectorial measure. Simply put the weight of the edge as the coefficient of the measure, we may rewrite the discrete transport path $G=(V,E,w)$ as a vectorial measure $G=\sum_{e\in E}w(e)\llbracket e\rrbracket << \H$. The upshot of translation into measure is that Kirchoff's Law can be simply rewritten in the sense of distribution by taking test functions supported only around each vertex:
+$$\mathrm{div } G = A^+ - B^- \stackrel{def}{\iff} \forall \phi\in C^\infty_c(\mathbb{R}^m), \int_{\mathbb{R}^m} \nabla\phi\d G + \int_{\mathbb{R}^m} \phi\d(A^+ - B^-) = 0.$$
+Please be careful of the sign due to integration by parts and our choice of the direction of edges.
+\par
+From above, we may write
+\begin{align*}
+Path_a(A^+, B^-) &= \left\{G=\sum_{e\in E} w(e)\llbracket e\rrbracket \,\Bigg|\, \mathrm{div }G = A^+ - B^-\right\}, \\
+M_a^\alpha(G) &= \int_E \left(\frac{\d|G|}{\d\H}\right)^{\alpha} \d\H  = \int_E \left(\frac{\d|G|}{\d\H}\right)^{\alpha-1} \d|G| \\
+&= \int_{\mathbb{R}^m} \left(\frac{\d|G|}{\d\H}\right)^{\alpha} \d\H = \int_{\mathbb{R}^m} \left(\frac{\d|G|}{\d\H}\right)^{\alpha-1} \d|G|, \\
+||G|| &= M_a^1(G), \quad \textrm{setting }\alpha=1.
+\end{align*}
+The Radon-Nikodym derivative is directly due to the rephrasal of $G$. We warn that Radon-Nikodym Theorem does not apply to $\H$ over $X$ or $\mathbb{R}^m$ as it is not $\sigma$-finite.
+\par
+Sophisticated readers would have immediately recognized that $G=(V,E,w)$ is nothing but a 1-current before the remark. Indeed, we borrow the notation $\llbracket e\rrbracket$ from currents. Another (intermediate) reformulation is in terms of algebraic topology, in particular viewing edges as 1-simplices and graphs as 1-chains from simplecial homologies. This is more algebraic but still discrete. We shall not elaborate on either currents or chains.
+\end{rem}
+
+\par
+Now we are ready to give an analogue of the transport path and cost functional for general probabilities, following the routine of standard machine. Let's fix $\mu^+,\mu^- \in\P(X)$ in the following. It is tempting to bring the measure theoretic formulation directly to the general case as $\mathrm{div }T = \mu^+ - \mu^-$ and $M^\alpha(G) = \int_{\mathbb{R}^m} \left(\frac{\d|T|}{\d\H}\right)^{\alpha} \d\H$, where $T\in\mathcal{M}(X;\mathbb{R}^m)$. But there are at least two problems. First, we don't know whether $T$ represents to a ``path'', or ``looks like a 1-dimensional object''. Second, even if we require that $T<<\H$ so that it actually resembles a ``path'', it is hard to justify the naive integral since $\H$ is not $\sigma$-finite over $X$ or $\mathbb{R}^m$. Moreover, $t\mapsto t^\alpha$ is concave instead of convex, so $M_a^\alpha$ is unlikely lower semi-continuous (due to a theorem relating convexity of integrand and lower semi-continuity of integral energy), which makes it less ideal for minimization. So we have to be a bit more sophisticated.
+
+\par
+For a ``correct'' notion of transport paths, we should look at the counterpart of ``simple function approximation to (strongly) measurable function''.
+\begin{defn}[General transport path]
+A vectorial measure $T$ is a transport path from the source probability $\mu^+$ to the target probability $\mu^-$ if
+$$\exists \{A^+_n\}, \{B^-_n\} \subset \P_a(X), G_n \in Path_a(A^+_n, B^-_n), \forall n\in\mathbb{N}_+, \textrm{ s.t. } A^+_n \wstar \mu^+, B^-_n \wstar \mu^-, \textrm{ and } G_n \wstar T, \textrm{ as } n\rightarrow \infty,$$
+where $\{A^+_n, B^-_n,G_n\}$ is called an approximating graph sequence for $T$.
+We denote the convergence by $(A^+_n,B^-_n,G_n)\wstar(\mu^+,\mu^-,T)$, and the set of all transport paths by $Path(\mu^+,\mu^-)$.
+\end{defn}
+
+\par
+Note that Kirchoff's Law $\mathrm{div }T = \mu^+ -\mu^-$ and absolute continuity $T<<\H$ is automatically preserved by definition of w-* convergence. Clearly, $Path_a(A^+,B^-) \subsetneq Path(A^+,B^-)$. Also, we know that $\P_a(X)$ is (w-*) dense in $\P(X)$ (e.g. approximating probability via empirical distributions), so in the definition $A^+_n \wstar \mu^+$ and $B^-_n \wstar \mu^-$ can always be met, and the only issue if any should come from $G_n \wstar T$. We cannot say that a transport path exists between any pair of probabilities without further information.
+
+\par
+Defining the general cost functional to be the limit of discrete cost functionals of an approximating graph sequence still brings troubles, as the limit may not exist or may depend on the sequence chosen. The next natural idea is to look at the relaxed functional, which is the greatest (sequentially) lower semi-continuous functional below the original functional (but since w-* topology of $\P(X)$ is metrizable, sequentially lower semi-continuity is equivalent to lower semi-continuity). Lower semi-continuity, a desired property for minimization, is guaranteed by definition, but the relaxed functional might not coincide with the original one. Here is one observation that partly eases this concern, also echoing the construction of Lebesgue integral. Recall that the Lebesgue integral of ${f\in L^0_+(\mathbb{R})}$ is defined to be $\int f:=\sup\left\{\int s \,\big|\, s\le f, s\in S^0_+(\mathbb{R})\right\}$. Also by Fatou's lemma, we have that if $f_n \rightarrow f$ in $L^0_+$ as $n\rightarrow \infty$, then $\int f \le \linf \int f_n$. So we can actually write
+$$\int f = \inf\left\{ \linf \int s_n \,\Bigg|\, s_n \in S^0_+(\mathbb{R}), s_n \xrightarrow[n\rightarrow\infty]{L^0_+} f \right\},$$
+and use it as an equivalent (but fancier) definition of $\int f$ for ${f\in L^0_+(\mathbb{R})}$. Note that this is exactly the notion of relaxed functional.
+\begin{defn}[Relaxed cost functional]
+Let $\alpha \in[0,1]$, and $T\in Path(\mu^+,\mu^-)$ be a transport path from the source probability $\mu^+$ to the target probability $\mu^-$. Define the $\alpha$-cost functional of $T$ to be
+$$M^\alpha(T) := \inf\left\{ \linf M_a^\alpha(G_n) \,\Bigg|\, \{A^+_n\}, \{B^-_n\} \subset \P_a(X), G_n \in Path_a(A^+_n, B^-_n), (A^+_n,B^-_n,G_n)\wstar(\mu^+,\mu^-,T)\right\}.$$
+\end{defn}
+
+\par
+By definition $M^\alpha \le M_a^\alpha$ on $Path_a(A^+,B^-)$, though we should believe that equality holds. We shall assert it in Section~\ref{sec:general} below. We emphasize that density and lower semi-continuity are the key elements in the definition.
+
+\par
+Similarly, we should study cost minimization in this general setting.
+\begin{prob}[General minimization]\label{prob:general}
+Given $\alpha \in[0,1]$, $\mu^+, \mu^- \in \P(X)$, solve for
+$$\inf_{T\in Path(\mu^+,\mu^-)} M^\alpha(T) =: d^\alpha(\mu^+,\mu^-) \in [0,\infty].$$
+\end{prob}
+
+\par
+We warn that unlike the discrete case, the minimum in general could be $+\infty$. But remarks above on special cases still hold.
+
+\par
+Though we are mainly interested in transporting between probabilities due to normalization, it is necessary in the proof of general existence to consider transporting between finite measures of equal (small) total mass. We make a note in the discrete case for later references. Ditto for the general case.
+\begin{rem}[Homogeneity]\label{rem:scale}
+Suppose that $A^+,B^- \in\mathcal{M}_{+,a}(X)$ with $||A^+|| = ||B^-|| = \lambda \in \mathbb{R}_{++}$, i.e. two finite atomic measures on $X$ with equal total mass $\lambda$, or equivalently, $\lambda^{-1}A^+,\lambda^{-1}B^- \in\P_a(X)$. Following above, we can obviously write $Path_a(A^+,B^-)=\lambda Path_a(\lambda^{-1}A^+,\lambda^{-1}B^-)$. Then clearly we have $M_a^\alpha(G)=\lambda^{\alpha} M_a^\alpha(\lambda^{-1}G)$.
+\end{rem}
+
+\section{Properties and Existence of Optimizer in Discrete Case} \label{sec:discrete}
+Our goal in this section is to establish the existence of solutions to Problem~\ref{prob:discrete}, even though existence in discrete case seems ``obvious'' in the following sense: as long as the search space is finite, a brute force ``trial and error'' approach to minimization of discrete problem usually guarantees the existence of solution. For analysts, finiteness may be better phrased as compactness. We shall establish compactness of a (``small'') set of ``candidate solutions'' by showing the following three propositions, which are useful facts themselves. For convenience, fix in this section $A^+, B^- \in\P_a(X)$.
+
+\par
+The first one justifies the jargon ``branched optimal transport'' as it says that there is always an optimum looking like a forest, a collection of trees (or ginsengs).
+
+\begin{prop}[Graph acyclicity; No return or detour]
+$\forall G\in Path_a(A^+, B^-), \exists G^*\in Forest(A^+, B^-), M_a^\alpha(G^*) \le M_a^\alpha(G)$, where $Forest(A^+, B^-):=\{F\in Path_a(A^+, B^-) \,|\, F \textrm{ is acyclic}\}.$
+\end{prop}
+
+\begin{proof}[Sketch Proof]\let\qed\relax
+If there is a  cycle in the discrete transport path, we manage to cut an edge and reduce the number of cycle by at least one. Reiterate the process until we don't have any cycles, and the resulting transport path is a forest.
+\par
+Since the graph is weighted and directed, we have to take care of two properties of edges: weights and directions. In particular, we have to keep the weights positive/non-negative, so we should consider deleting the edge(s) with minimal weights. But there are two possible directions in a cycle, and we have to be aware of the following two cases (at least).
+\begin{enumerate}
+	\item Every edge in the cycle is in the same counterclockwise or clockwise direction. This is the case of flow (of goods) returning to the same point. Intuitively it is suboptimal.
+    \item A consecutive number of edges in the cycle from vertex $v_1$ to vertex $v_2$ is counterclockwise while the remaining edges in the cycle is clockwise. This is the case of splitting routes from one vertex to another. Since the $\alpha$-cost functional encourages combination of goods transported, one should deduce that splitting is suboptimal, too. But which route to keep or delete depends on the actual profile of the cycle.
+\end{enumerate}
+\end{proof}
+
+\begin{proof}
+Fix $G\in Path_a(A^+, B^-)$ and suppose that $C$ (with weights and directions) is a cycle in $G$. Fix an orientation (say counterclockwise) of $\supp C$ and write the cycle (with re-defined orientation but no weights) as $\tilde{C}:=\left\{ \{c_i\}_{i\in\mathbb{Z}_n}, \{(c_i,c_{i+1})\}_{i\in\mathbb{Z}_n} \right\}$ where $\{c_i\}_{i\in\mathbb{Z}_n}$ are distinct and $\mathbb{Z}_n := \mathbb{Z}/{n\mathbb{Z}}$. Decompose $C$ into $C_+$ and $C_-$ (both with weights and directions) such that $C_+$ consists of all the edges in $C$ with the same direction as $\tilde{C}$ (counterclockwise portion) while $C_-$ consists of all the edges in $C$ with the opposite direction of $\tilde{C}$ (clockwise portion). It then follows that $C=C_+ - C_-$ (abusing notations, adding graphs is adding the corresponding measures as discussed in Remark~\ref{rem:eqv}). Note that $\forall \lambda\in\mathbb{R}, G+\lambda C \in Path_a(A^+,B^-)$ because $\forall i\in\mathbb{Z}_n,$
+\begin{align*}
+w\left((c_{i-1},c_i)\right) + \sum_{\stackrel{e^+=c_i}{e\ne (c_{i-1},c_i)}} w(e) + \sum_{x_j=c_i} a_j & = w\left((c_{i},c_{i+1})\right) + \sum_{\stackrel{e^-=c_i}{e\ne (c_i,c_{i+1})}} w(e) + \sum_{y_j=c_i} b_j \\
+\Rightarrow \left(w\left((c_{i-1},c_i)\right) + \lambda\right) + \sum_{\stackrel{e^+=c_i}{e\ne (c_{i-1},c_i)}} w(e) + \sum_{x_j=c_i} a_j & = \left(w\left((c_{i},c_{i+1})\right) + \lambda\right) + \sum_{\stackrel{e^-=c_i}{e\ne (c_i,c_{i+1})}} w(e) + \sum_{y_j=c_i} b_j ,
+\end{align*}
+and Kirchoff's Law at other vertices is untouched. In case $w+\lambda=0$ exactly, we delete the corresponding edge; in case $w+\lambda<0$, we reverse the direction of the corresponding edge and keeping the weight at $|w+\lambda|$. In order not to reverse the direction of edges in $C$ (deletion is admissible), we require that $\forall e\in C_{\pm}, w(e)\pm\lambda \ge 0$, and hence $-w_+:=-\min_{e\in C_+} \le \lambda \le \min_{e\in C_-}=:w_-$.
+\par
+Consider the variation of $M_a^\alpha$ with respect to $\lambda$. $\forall \lambda\in[-w_+, w_-]$, set
+$$f(\lambda):= M_a^\alpha(G+\lambda C)-M_a^\alpha(G) = \sum_{e\in C_+}\left[ \left(w(e)+\lambda\right)^\alpha - w(e)^\alpha \right] |e| + \sum_{e\in C_-}\left[ \left(w(e)-\lambda\right)^\alpha - w(e)^\alpha \right] |e|.$$
+It is clear that $f$ is concave, and hence achieves minimum at either endpoint $\lambda^*=-w_+$ or $\lambda^*=w_-$. Now set $G^*:=G+\lambda^* C$, we have that $M_a^\alpha(G^*) \le M_a^\alpha(G)$ and $\#E(G^*) < \#E(G)$ as desired. Thus, $\exists F\in Forest(A^+,B^-), M_a^\alpha(F) \le M_a^\alpha(G)$.
+\end{proof}
+
+As claimed, the above proposition justifies the naming of Steiner's Minimal Tree Problem and that of branched optimal transport. We may restrict the admissible control to a smaller set $Forest(A^+,B^-) \subsetneq Path_a(A^+,B^-)$. $F\in Forest(A^+,B^-)$ may not be connected so it is a forest but not necessarily a tree. Recall that for a forest $F$, we have $\#E(F) + \#(F\slash\sim) = \#V(F)$, where $\sim$ denotes the equivalence relation of connectedness, and $F\slash\sim$ is the set of connected components of $F$. Thus, given its number of vertices, a transport forest $F$ cannot have too many edges and it suffices to control the number of vertices to control the complexity of the transport path as $\#E(F) < \#V(F)$.
+
+\par
+Before we control the number of vertices of $F$, we show that the forest structure also uniformly bounds the weights on edges.
+\begin{prop}[Uniform bound of weights; No overload]
+$\forall F\in Forest(A^+,B^-), e\in E(F), w(e)\in (0,1]$.
+\end{prop}
+
+\begin{proof}[Sketch Proof]\let\qed\relax
+Since the total mass in the entire transportation is $|A^+|=|B^-|=1$, if edge $e$ has weight $w(e)>1$, then there must be ``excess source created from nowhere" and ``ghost target absorbing the excess", which increases the total cost unnecessarily. We try to locate/eliminate the excess source (if any) contributing to the vertex $e^+$ by tracking up the transport path to every possible source. The forest structure plays the key role in ``hunting'' because it is equivalent to the uniqueness of path between any pair of vertices. (Existence is given by connectedness, which may not hold.)
+\end{proof}
+
+\begin{proof}
+For clarity, we first define the strict pre-order $\rightarrow$ (and $\leftarrow$) on the vertex set. Let $G\in Path_a(A^+,B^-)$ and $x,y\in V$, say $x\rightarrow y$ (equivalently $y\leftarrow x$) iff $\exists n\in\mathbb{N}_+,  \{v_i\}_{i=0}^n \subseteq V, v_0=x, v_n=y, \left\{ (v_{i-1},v_{i}) \right\}_{i=1}^n \subseteq E$ (in particular we have $x\not\rightarrow x$ since $0\not\in\mathbb{N}_+$). Also, for $U\subseteq V$, set $[U]_\rightarrow := \left\{y\in V \,\big|\, \exists x\in U, x\rightarrow y \right\}$ and ditto for $\leftarrow$ (we may drop set braces for a list of elements). Note that in a forest, due to uniqueness of path between two vertices (``no return''), $\rightarrow$ becomes a strict partial order on $V$, and we denote the unique path from $x$ to $y$ by $\llbracket x\rightarrow y\rrbracket$.
+\par
+Fix $F\in Forest(A^+,B^-)$ and $e\in E$. Consider $[e^+]_{\leftarrow}$. Take a cutoff function $\phi \in C_c^\infty(\mathbb{R}^m)$ such that $\phi=1$ on $\bigcup_{v\in[e^+]_{\leftarrow}}{\supp\llbracket v\rightarrow e^+\rrbracket}$ and $\left(V\backslash[e^+]_{\leftarrow}\right)\cap \supp\phi = \emptyset$. Then by Kirchoff's Law:
+$$
+1\ge \int_{\mathbb{R}^m} \phi\d(A^+-B^-) = \int_{\mathbb{R}^m} -\nabla\phi \d F= \sum_{\stackrel{f\in E}{\supp\llbracket f\rrbracket \not\subseteq \supp\phi}} w(f) \int_0^1 -\nabla\phi\left((1-t)f^- + tf^+\right) \cdot (f^+ - f^-)\d t = \sum_{\stackrel{f\in E}{\supp\llbracket f\rrbracket \not\subseteq \supp\phi}} w(f) \ge w(e) >0.
+$$
+Note that in the above, we use the fact by definition that $\forall f\in E$, if $\llbracket f\rrbracket \not\subseteq \supp\phi$, then $f^-\in\supp\phi$ and $f^+\not\in\supp\phi$.
+\end{proof}
+
+\par
+\begin{rem}[Bounds by special case]\label{rem:bound0_1}
+Echoing Remark~\ref{rem:special}, the fact that $w$ is uniformly bounded on $Forest(A^+,B^-)$ by $1$ gives us the following crucial estimate essential to prove existence in the general case: $\forall F\in Forest(A^+,B^-), M_a^1(F) \le M_a\alpha(F) \le M_a^0(F)$. We shall be more specific at the beginning of the next section.
+\end{rem}
+
+\par
+Thanks to the above two propositions, it suffices to bound the total number of vertices to control the ``size'' of the candidate solutions. We break down the  bound on vertices by their degrees. Obviously, non-degeneracy condition and Kirchoff's Law together imply that $\#\{\deg v\le 1\}\le k+l=\#\supp A^+ + \#\supp B^-$. We start with vertices with degree two, for optimal solutions.
+
+\begin{prop}[Graph balance equation; No turn]
+Suppose that $G\in Path_a(A^+,B^-)$ is an optimal solution to Problem~\ref{prob:discrete}, then $\forall v\in V\backslash\left(\supp A^+ \cup \supp B^- \right), \sum_{e^+=v} w(e)^\alpha \sgn e = \sum_{e^-=v} w(e)^\alpha \sgn e \in{\mathbb{R}^m}$.
+\end{prop}
+
+\begin{proof}[Sketch Proof]
+One thing in common of all (path) interior vertices is that their positions are not inputs and can be varied. We therefore consider the variation of $\alpha$-cost functional with respect to the position of an interior vertex. 
+\end{proof}
+
+\begin{proof}
+Let $G\in Path_a(A^+,B^-)$ be an optimal solution to Problem~\ref{prob:discrete}. Fix $v\in V(G)$, and abuse notations by treating $e\in E(G)$ as the vector $e^+ -e^-\in\mathbb{R}^m$. Let $u\in\mathbb{R}^m$ with $|u|<\epsilon<<1$ and $G(u)\in Path_a(A^+,B^-)$ be the transport path by changing the position of $v$ from $v\in\mathbb{R}^m$ to $v+u\in\mathbb{R}^m$. Note that the three requirements of $Path_a(A^+,B^-)$ is untouched as long as $v+u$ remains in a small neighbourhood of $v$ disjoint from the other vertices. Set
+$$f(u):=M_a\alpha(G(u)) - M_a\alpha(G) = \sum_{e\in E(G), e^+=v} w(e)^\alpha \left(|e+u|-|e|\right) + \sum_{e\in E(G), e^-=v} w(e)^\alpha \left(|e-u|-|e|\right).$$
+Note that $f\in C^1(\mathbb{R}^m)$ since $e\ne 0\in\mathbb{R}^m, \forall e\in E(G)$. By optimality of $G$, we have that $\nabla f(0)=0$. But
+$$\nabla f(u)= \sum_{e^+=v} w(e)^\alpha \sgn(e+u) - \sum_{e^-=v} w(e)^\alpha \sgn(e-u),$$
+so we have that $\sum_{e^+=v} w(e)^\alpha \sgn e = \sum_{e^-=v} w(e)^\alpha \sgn e$.
+\end{proof}
+
+\begin{rem}[Examples]
+Suppose that an interior vertex $v$ has degree two, then it must be the case that $e_1^+=v$ and $e_2^-=v$ with Kirchoff's Law $w(e_1)=w(e_2)>0$. Thus the Balance equation gives us $\sgn e_1=\sgn e_2 \in\mathbb{R}^m$. In other words, the path does not change its direction passing through the vertex $v$, and it is essentially a single edge instead of two edges. It coincides with the intuition that it is suboptimal to make turns when there is no loading or unloading going on. Indeed, the Balance equation is more general: if we view the expression $w(e)^\alpha \sgn e$ as a vectorial cost flow, then in optimum, the aggregate cost flow does not speed up or change direction at every single point along the path (a notion of zero acceleration, or geodesic).
+\par
+If $\alpha=1$, then the Balance equation says exactly that the flow of goods being transported is geodesic. If $\alpha=0$, i.e. in the combinatorial Stein's Minimal Tree problem, since the weights do not factor into the cost functional, we simply have $\sum_{e^+=v} \sgn e = \sum_{e^-=v} \sgn e$. If furthermore $\deg v=3$, we can deduce that the three edges must evenly divide the plane into three equal angles of $2\pi/3$.
+\end{rem}
+
+\par
+We now have control of the number of vertices of low degrees $\#\{\deg v\le 2\} \le k+l$, given that the solution is optimal. We now control the number of vertices with degrees at least three. Such control does not rely on optimality, but simply a consequence of the forest structure.
+
+\begin{prop}[Bounded complexity; (Pre-)compactness]
+$$\forall F\in Forest(A^+,B^-), \#\{\deg v\ge 3\}\le k+l-2=\#\supp A^+ + \#\supp B^- -2.$$
+\end{prop}
+
+\begin{proof}[Sketch Proof]
+In a forest, we have the formula $\#E+\#\left(F\slash\sim\right) = \#V$ to relate $\#E$ and $\#V$. But in a graph, there is a more general formula relating the number of edges, the number of vertices and their degrees, namely, $\sum_{v\in V}\deg v = 2\#E$. Note that $\#\left(F\slash\sim\right)\ge 1$ would gives an inequality estimate while the coefficient $2$ gives us information of $\{\deg v\ge 3\}$.
+\end{proof}
+
+\begin{proof}
+Fix $F\in Forest(A^+,B^-)$.
+\begin{align*}
+& 3\#\{\deg v\ge 3\}+2\#\{\deg v=2\}+\#\{\deg v\le 1\} \le \sum_{v\in V}\deg v = 2\#E = 2\left(\#V -\#(F\slash\sim)\right) \le 2(\#V-1) \\
+\Rightarrow & \#\{\deg v\ge 3\} \le \#\{\deg v\le 1\}-2 \le \#\supp A^+ + \#\supp B^- \le k+l-2.
+\end{align*}
+\end{proof}
+
+The above formula bounds the total number of vertices with high degrees. In other words, it says that a forest cannot be too complex with two many edges branching out two often. We can now give existence result in discrete case since the optimizer cannot be too complex.
+\begin{thm}[Discrete existence]
+Problem~\ref{prob:discrete} has a solution.
+\end{thm}
+
+\begin{proof}
+As shown above, if an optimizer $G\in Path_a(A^+,B^-)$ ever exists, we could find one such that $\#V\le 2(k+l-1)=:N$ and $\sup w \le 1$. We now consider weighted undirected complete graphs of order (at most) $N$ in $X$, and rephrase Problem~\ref{prob:discrete} in terms of complete graphs. An optimal discrete transport path would be a subgraph of one such (degenerate) complete graph.
+\par
+Let $K_N$ be a complete graph of order $N$ with (possibly repeated) vertices $\{v_i\}_{i=1}^N \subseteq X$, and $w_{K_N}:E(K_N)\rightarrow[-1,1]$ be a weight function on the edge of $K_N$. We may associate $(K_N,w_{K_N})$ with a unique weighted directed graph $G:=\left(V(G),E(G),w_G\right)$ (but not vice versa), by setting the directed edge to be $(v_i,v_j)$ if $w_{K_N}\left(\{v_i,v_j\}\right)>0$, $(v_j,v_i)$ if $w_{K_N}\left(\{v_i,v_j\}\right)<0$, and effectively removing the edge if $w_{K_N}\left(\{v_i,v_j\}\right)=0$, for every pair $1\le i<j\le N$. Obviously, we should define $w_G:E(G)\rightarrow (0,1]$ so that ${\forall e=(e^-,e^+)\in E(G)}, {w_G(e):=w_{K_N}(\{e^-,e^+\})}$. And it is easy to see that if $w_{K_N}$ satisfies ${\sum_{x_i=v_h} a_i + \sum_{i<h} w_{K_N}(\{v_i,v_h\})} = {\sum_{y_j=v_h} b_j + \sum_{h<j} w_{K_N}(\{v_h,v_j\})}, \forall h\in [N]$, then $w_G$ satisfies the Kirchoff's Law.
+\par 
+Due to the above observation, Problem~\ref{prob:discrete} could be viewed as the following finite-variable minimization problem:
+\begin{align*}
+& \min \sum_{1\le i<j\le N} w_{i,j}^\alpha |v_i-v_j|, \{v_i\}_{i=1}^N \subseteq X, \{w_{i,j}\}_{1\le i<j\le N} \in [-1,1]^{\binom{N}{2}}, \\
+\textrm{s.t.}\quad & \forall i\in[k], v_i=x_i, \,\forall j\in[l], v_{k+j}=y_j, \,\forall h\in[N], {\sum_{x_i=v_h} a_i + \sum_{i<h} w_{i,h}} = {\sum_{y_j=v_h} b_j + \sum_{h<j} w_{h,j}}.
+\end{align*}
+It is clearly a minimization of a continuous function over a compact set, and hence the global minimum could be obtained.
+\par 
+Thus, Problem~\ref{prob:discrete} has a solution.
+\end{proof}
+
+Now that we have established existence of $\alpha$-cost minimizers in discrete case, we conclude this section by measuring distance between atomic probabilities on $X$ with the optimal transport cost, 
+
+\begin{thm}[Metric on atomic probabilities]
+$d_a^\alpha$ defined in Problem~\ref{prob:discrete} is a metric on $\P_a(X)$.
+\end{thm}
+
+\begin{proof}
+Positive definiteness and symmetry are trivial. Subadditivity (triangle inequality) can be easily seen from the equivalent measure theoretic formulation given in Remark~\ref{rem:eqv} $M_a^\alpha(G)=\int_{\mathbb{R}^m} \left(\frac{\d|G|}{\d\H}\right)^{\alpha} \d\H$ and the existence of optimizers proven above. Note that $t\mapsto t^\alpha$ is subadditve for $\alpha\in[0,1]$.
+\end{proof}
+
+\section{Existence of Optimizer in General and Metrization of Weak-* Topology} \label{sec:general}
+This section establishes the existence of solutions to the general case Problem~\ref{prob:general}, and more importantly, introduces a new metrization of the weak-* topology of the space of general probability measures. Most ingredients are ready due to our hard work above, and what we are missing is a seemingly trivial finiteness condition, as the following Remark~\ref{rem:calcvar} points out. 
+
+\par
+\begin{rem}[Direct method of calculus of variations]\label{rem:calcvar}
+Existence of solutions to minimization problems of functionals can usually be solved by the direct method of calculus of variations, which requires the following three properties of the functional and the space of admissible controls: (sequential) lower semi-continuity, coercivity, compactness.
+\begin{enumerate}
+	\item Coercivity: Assume the minimum is finite, then pick a minimizing sequence of the functional. If the functional is coercive (with respect to an appropriate norm on the space of admissible controls), then the minimizing sequence is bounded.
+	\item Compactness: With possible modifications to the minimizing sequence chosen above, if boundedness in one norm implies (pre-)compactness in another suitable norm (compact embedding), then the (modified) minimizing sequence admits a convergent subsequence.
+	\item Lower semi-continuity: Further suppose that the functional is (sequentially) lower semi-continuous (with respect to the topology in which the compactness result above holds), then the limit of any convergent subsequence above will be a global minimum.
+\end{enumerate}
+Indeed, we ``almost" have all three properties in the general case. The relaxed functional $M^\alpha$ is defined to be lower semi-continuous with respect to the weak-* topology; the discrete functional $M_a^\alpha$ is coercive by Remark~\ref{rem:special} and Remark~\ref{rem:eqv}; bounded subsets (in total variations) of the space of measures on $X$ (compactum in $\mathbb{R}^m$) is always weak-* pre-compact. Another handy property here is the density of $\P_a(X)$ in $\P(X)$ and that of discrete transport paths built into the definition. The ``almost'' part is finiteness of $M^\alpha(T)$. As long as we have it, we can apply the direct method.
+\end{rem}
+
+\par
+We state the above discussion as a theorem.
+\begin{thm}[General existence]\label{thm:generalexist}
+Problem~\ref{prob:general} has a solution if $d^\alpha(\mu^+,\mu^-)<\infty$.
+\end{thm}
+
+\begin{proof}[Sketch Proof]
+Apply the direct method of calculus of variations.
+\end{proof}
+
+It is not yet clear when we will have finite transport costs. The next result gives us a crude estimate but a sufficient condition, implying that Theorem~\ref{thm:generalexist} is not vacuous. It is also the most technical proposition of this section.
+\begin{prop}[Uniform upper bound of costs]\label{prop:upbound}
+Let $Q:=\left[-\frac{1}{2},\frac{1}{2}\right]^m \subset \mathbb{R}^m$ be the unit cube centered at the origin, and ${\delta_0 \in\P_a(Q) \subset \P(Q)}$ be the Dirac delta measure at the origin. If $\alpha\in(1-\frac{1}{m},1]$, i.e. $1-m(1-\alpha)>0$, then
+$$\forall \mu \in \P(Q), \exists T\in Path(\delta_0,\mu), M^\alpha(T)\le \frac{\sqrt{m}}{2\left(2^{1-m(1-\alpha)}-1\right)}.$$
+\end{prop}
+
+\begin{proof}[Sketch Proof]
+A natural approximation of $\mu$ by atomic probabilities is dyadic approximation (especially when powers of two are invovled). We bisection the side length of $Q$ and replace the restricted measure $\mu$ on the sub-cube with a delta measure at the center with the same total mass. Then distribute the mass at the center of $Q$ to each center of the sub-cube accordingly. We iterate the process to construct an approximating sequence of $\mu$ and a transport path $T$. We expect that the pattern is self-similar, and the $\alpha$-cost at the next level of sub-cubes is bounded by a constant factor of that of the current level due to this fractal pattern. Note that Remark~\ref{rem:scale} will help. As a result, we should be able to bound the costs of the approximating sequence by a geometric series.
+\end{proof}
+
+\begin{proof}
+For clarity, we first label the dyadic cubes and their centers. Let $Q^{(0)}:=Q$ with center $c^{(0)}:=0$. Define $\left\{Q^{(n)}_{s}, c^{(n)}_{s}\right\}_{s\in\{0,1\}^{m\times n}}$ ($s$ can be viewed as a string of length $n$ with characters being binary vectors of size $m$) inductively for $n\in\mathbb{N}_+$ such that ${ c^{(n)}_{(s',s_n)}:=c^{(n-1)}_{s'}+\frac{s_n}{2^n}-\frac{\mathbbm{1}}{2^{n+1}} }$ is the center of the sub-cube $Q^{(n)}_{(s',s_n)}$ of $Q^{(n-1)}_{s'}$, where $Q^{(n)}_{(s',s_n)}$ has side length $\frac{1}{2^n}$, and $\mathbbm{1}$ is a vector of length $m$ with all entries $1$.
+\par
+Now, define $\mu_n := \sum_{s\in\{0,1\}^{m\times n}} \mu\left(Q^{(n)}_s\right)\delta_{c^{(n)}_s} \in \P_a(Q)$ for $n\in\mathbb{N}$. Note that $\mu_0=\delta_0$. It is clear that $\mu_n \wstar \mu$ as $n\rightarrow\infty$. Then construct $G_n := \sum_{s' \in\{0,1\}^{m\times (n-1)}} \sum_{s_n\in\{0,1\}^{m}} \mu\left(Q^{(n)}_{(s',s_n)}\right) \left\llbracket \left(c^{(n-1)}_{s'}, c^{(n)}_{(s',s_n)} \right) \right\rrbracket \in Path_a(\mu_{n-1},\mu_{n})$. Let $T_n :=\sum_{i=1}^n G_i \in Path_a(\mu_0,\mu_n)$. We have the following estimate:
+\begin{align*}
+M_a^\alpha(T_n) & \le \sum_{i=1}^n M_a^\alpha(G_i) = \sum_{i=1}^n \sum_{s' \in\{0,1\}^{m\times (i-1)}} \sum_{s_i\in\{0,1\}^{m}} \left[\mu\left(Q^{(i)}_{(s',s_i)}\right)\right]^\alpha \left| c^{(i)}_{(s',s_i)}-c^{(i-1)}_{s'} \right| \\
+& =  \sum_{i=1}^n \sum_{s' \in\{0,1\}^{m\times (i-1)}} \sum_{s_i\in\{0,1\}^{m}} \left[\mu\left(Q^{(i)}_{(s',s_i)}\right)\right]^\alpha \frac{\sqrt{m}}{2^{i+1}}
+\le \sum_{i=1}^n \sum_{s' \in\{0,1\}^{m\times (i-1)}} 2^m \left[\frac{\mu\left(Q^{(i-1)}_{s'}\right)}{2^m}\right]^\alpha \frac{\sqrt{m}}{2^{i+1}} \\
+& \le \sum_{i=1}^n 2^{(i-1)m}\frac{\sqrt{m}}{2^{i+1-m}} \left[\frac{1}{2^{(i-1)m+m}}\right]^\alpha
+= \frac{\sqrt{m}}{2}\sum_{i=1}^n 2^{-i(1-m(1-\alpha))}.
+\end{align*}
+If $1-m(1-\alpha)>0$, then the series above converges and $M_a^\alpha(T_n) \le \frac{\sqrt{m}}{2}\sum_{i=n}^\infty 2^{-i(1-m(1-\alpha))} = \frac{\sqrt{m}}{2\left(2^{1-m(1-\alpha)}-1\right)}, \forall n\in\mathbb{N}_+$.
+Recall that $M_a^\alpha(T_n) \ge M_a^1(T_n) \ge ||T_n||$, so by weak-* compactness, up to subsequence, $T_n \wstar T$ for some $T$, and $M^\alpha(T) \le \linf M_a^\alpha(T_n) \le \frac{\sqrt{m}}{2\left(2^{1-m(1-\alpha)}-1\right)}$.
+\end{proof}
+
+We make a comment on the approximation above, echoing the claim that the upper bound is crude. By symmetry, it is not hard to see that $T_n \in Path_a(\delta_0,\mu_n)$ is indeed the optimal discrete transport path for $\alpha=0$, for every $\mu\in\P(Q)$ and $n\in\mathbb{N}_+$. We also know that $M_a^\alpha \le M_a^0$, so such upper bound has the potential to be improved by replacing $T_n$ with the $\alpha$-optimal path. However, the discrete optimum is hard to find in general (without symmetry) if $\alpha\in(0,1)$. Another observation is that the scaling argument depends on the dimension $m$ of the ambient space, and the resulting range of $\alpha\in(1-\frac{1}{m},1]$ is not far away from one in high dimensions. One might try to replace the dimension of the ambient space with some dimension of the support of $\mu$, $\supp\mu$, which might yield a wider range of $\alpha$ for existence.
+\par
+As a corollary to Theorem~\ref{thm:generalexist} and the proposition, we immediately have the following theorem.
+\begin{thm}[Existence for $\alpha$ sufficiently large]
+Let $X\subseteq Q\subset \mathbb{R}^m$, where $Q$ is a cube with side length $D\in\mathbb{R}_{++}$. We have
+$$\forall \mu^+,\mu^- \in \P(X), \alpha\in\left(1-\frac{1}{m},1\right], \exists T^*\in Path(\mu^+,\mu^-), M^\alpha(T^*)=\inf\left\{M^\alpha(T) \,\big|\, T\in Path(\mu^+,\mu^-)\right\} =: d^\alpha(\mu^+,\mu^-) \le \frac{D\sqrt{m}}{2^{1-m(1-\alpha)}-1}.$$
+\end{thm}
+
+\begin{proof}
+Let $c\in\mathbb{R}^m$ be the center of the cube $Q\supseteq X$. View $\mu^+,\mu^- \in\P(Q)$. By the uniform upper bound above, we may find approximating graph sequences $(\mu_n^+,\delta_c,T_n^+) \wstar (\mu^+,\delta_c,T^+)$ and $(\mu_n^-,\delta_c,T_n^-) \wstar (\mu^-,\delta_c,T^-)$ with $\sup_{n\in\mathbb{N}_+}M_a^\alpha(T_n^\pm) \le \frac{D\sqrt{m}}{2\left(2^{1-m(1-\alpha)}-1\right)}$. It is then clear that $(\mu_n^+,\mu_n^-,T_n^+ - T_n^-) \wstar (\mu^+,\mu^-,T^+ - T^-=:T)$, and hence $M^\alpha(T) \le \linf M_a^\alpha(T_n^+ - T_n^-) \le \linf\left[ M_a^\alpha(T_n^+) + M_a^\alpha(T_n^-)\right]$ $\le \frac{D\sqrt{m}}{\left(2^{1-m(1-\alpha)}-1\right)}$.
+\end{proof}
+
+\par
+Thereafter in this section, we insist that $\alpha\in(1-\frac{1}{m},1]$. It is tempting to jump right away into the conclusion that $d^\alpha$ is a metric on $\P(X)$ as in the discrete case. It is indeed true, but we have to be careful of subadditivity, because in the approximating graph sequences we generally have four instead of three sequences of atomic probabilities (details at the end of this section). The remaining of this section devotes to prove that $d^\alpha$ is a metrization of the weak-* topology on $\P(X)$.
+\par
+Recall that Wasserstein distance $W^p$ with $p\in[1,\infty)$ metrizes the weak-* topology on $\P(X)$ (since $X\subset\mathbb{R}^m$ is compact, the $p$-th moment is always finite). So one direction of equivalence is easy.
+\begin{prop}[Dominance over Wasserstein Distance]
+$W^1 \le d^\alpha$ on $\P(X)$.
+\end{prop}
+
+\begin{proof}
+Fix $\mu^+,\mu^- \in\P(X)$, and let $T\in Path(\mu^+,\mu^-)$ be such that $M^\alpha(T)=d^\alpha(\mu^+,\mu^-)$ by Theorem~\ref{thm:generalexist}. Then take an approximating graph sequence $(A_n^+,B_n^-,G_n)\wstar(\mu^+,\mu^-,T)$ as $n\rightarrow \infty$ which is also a minimizing sequence of $d^\alpha(\mu^+,\mu^-)$. Note that by definition of $W^1$ and Remark~\ref{rem:bound0_1}, we have $W^1(A_n^+,B_n^-) \le M_a^1(G_n) \le M_a^\alpha(G_n)$. So $W^1(\mu^+,\mu^-) \le \linf M_a^\alpha(G_n) = d^\alpha(\mu^+,\mu^-)$, where we use the fact that Wasserstein distance induces the same topology as the weak-* topology of $\P(X)$.
+\end{proof}
+
+\par
+Note that by definition, we have to choose the ``best'' approximating graph sequence $\left\{(A_n^+,B_n^-,G_n)\right\}$ of $T\in Path(\mu^+,\mu^-)$ in order to compute $M^\alpha(T)$. In other words, the sepicific sequence actually makes a difference (at least apriori). Next, we shall show however, that the sequence $\left\{(A_n^+,B_n^-)\right\}$ does not matter as long as $G_n\in Path_a(A_n^+,B_n^-)$ is picked wisely. This result can be viewed as the equivalence of discrete $\alpha$-transport cost and weak-* topology on atomic probabilities.
+\begin{prop}[Robustness of approximation]
+Let $\{A_n\}_{n=1}^\infty, \{B_n\}_{n=1}^\infty \subseteq \P_a(X)$. If both $A_n \wstar \mu$ and $B_n \wstar \mu$ as $n \rightarrow \infty$, then $\l d_a^\alpha(A_n,B_n)=0$.
+\end{prop}
+
+\begin{proof}[Sketch Proof]
+If $A_n$ and $B_n$ converge to the same probability $\mu$, then they are ``closer'' to each other as $n$ increases. Thus, we may ``locally'' neutralize their mass as much as possible, which costs nothing, and collect the residuals to a single hub and then redistribute them. The total mass of residuals should be very small, and we already have an upper bound on the cost of collecting mass to a single point, so we expect the $\alpha$-cost of transportation tends to zero.
+\end{proof}
+
+\begin{proof}
+Let $X\subseteq Q\subset \mathbb{R}^m$ for some large cube with side length $L$. We work on $\P(Q)$. As in Proposition~\ref{prop:upbound}, let $\left\{p^{(i)}_n\right\}_{i=1}^\infty$ and $\left\{q^{(i)}_n\right\}_{i=1}^\infty$ be the dyadic approximations of $A_n$ and $B_n$, respectively, for each $n\in\mathbb{N}_+$. Define $C(m,\alpha):=\frac{\sqrt{m}}{2\left(2^{1-m(1-\alpha)}-1\right)}$ for convenience. By Proposition~\ref{prop:upbound}, we have $d_a^\alpha \left(A_n,p^{(i)}_n \right) \le 2^{im} \left[\frac{1}{2^{im}}\right]^\alpha C(m,\alpha) \frac{L}{2^i} = \frac{C(m,\alpha) L}{2^{i(1-m(1-\alpha))}}$, and ditto for $(B_n,q^{(i)}_n)$.
+\par
+Note that $\forall n_1,n_2, i\in\mathbb{N}_+, \supp p^{(i)}_{n_1}, \supp q^{(i)}_{n_2} \subseteq \left\{c^{i}_s\right\}_{s\in\{0,1\}^{m\times i}}$, so
+$$d_a^\alpha\left(p^{(i)}_n,p^{(i)}_n\right) = d_a^\alpha\left(\left[p^{(i)}_n-q^{(i)}_n\right]^+, \left[p^{(i)}_n-q^{(i)}_n\right]^-\right) \le \left[\frac{\left\Vert p^{(i)}_n-q^{(i)}_n\right\Vert}{2}\right]^\alpha C(m,\alpha) L.$$
+Thus, given $\epsilon >0$, we could pick $i\in\mathbb{N}_+$ large enough such that $d_a^\alpha\left(A_n,p^{(i)}_n\right),d_a^\alpha\left(B_n,q^{(i)}_n\right) < \epsilon/3, \forall n\in\mathbb{N}_+$. Then by $A_n-B_n \wstar 0$, for $i$ chosen, we could find $N\in\mathbb{N}_+$ large such that $\forall n\ge N, s\in\{0,1\}^{m\times i}, \left(p^{(i)}_n -q^{(i)}_n\right)(Q^{(i)}_s)=(A_n-B_n)(Q^{(i)}_s) <\epsilon/(3\cdot 2^{im})$. Thus by triangle equality in the discrete case, we have $d_a^\alpha\left(A_n,B_n\right) \le d_a^\alpha\left(A_n,p^{(i)}_n\right) + d_a^\alpha\left(p^{(i)}_n, q^{(i)}_n\right) + d_a^\alpha\left(B_n,q^{(i)}_n\right) < \epsilon, \forall n\ge N$.
+\end{proof}
+
+\par
+Apply density of $\P_a(X)$ in $\P(x)$, we can now show that $d_\alpha$ induces the same topology of the weak-* topology.
+\begin{thm}[Equivalence to weak-* topology]
+$\forall \{\mu_n\}_{n=1}^\infty \subset \P(X) \ni\mu, \mu_n \wstar \mu \iff \l d^\alpha(\mu_n,\mu)=0.$
+\end{thm}
+
+\begin{proof}
+We have already shown one direction that $\l d^\alpha(\mu_n,\mu)=0 \Rightarrow \mu_n \wstar \mu$. It suffices to show the other direction.
+\par
+For every $n\in\mathbb{N}_+$, let $T_n\in Path(\mu_n,\mu)$, and $\left(A_n^{(i)},B_n^{(i)},G_n^{(i)}\right) \wstar (\mu_n,\mu,T_n)$ be an approximating graph sequence such that $d_a^\alpha \left(A_n^{(i)},B_n^{(i)}\right)=M_a^\alpha \left(G_n^{(i)}\right)$. Since $\mu_n \wstar \mu$, by an diagonal argument, we may select a subsequence $\{i_n\}_{n\in\mathbb{N}_+}$ such that as $n\rightarrow\infty$, $A_n^{(i_n)},B_n^{(i_n)} \wstar \mu$, and that $\forall n\in\mathbb{N}_+, M^\alpha(T_n) \le M_a^\alpha \left(G_n^{(i_n)}\right) + 1/n$. Thus,
+$\lsup d^\alpha(\mu_n,\mu) \le \lsup M^\alpha(T_n) \le \lsup M_a^\alpha \left(G_n^{(i_n)}\right) + 1/n = \l d_a^\alpha \left(A_n^{(i_n)},B_n^{(i_n)}\right) + 1/n = 0 $, by the proposition above.
+\end{proof}
+
+\par
+One has to be careful that the equivalence of topology induced by $W^1$ and $d^\alpha$ does not imply comparability (or bi-Lipschitzness).
+\par
+We can also close a subtle loophole in Section~\ref{sec:setup} to show that $M^\alpha = M_a^\alpha$ on $Path_a(A^+,B^-)$, where $A^+,B^- \in\P_a(X)$. Note that by definition, we originally only have one direction $M^\alpha \le M_a^\alpha$.
+\begin{prop}[Coincidence of discrete and relaxed costs]
+$M^\alpha = M_a^\alpha$ on $Path_a(A^+,B^-)$.
+\end{prop}
+
+\begin{proof}
+Fix $G\in Path_a(A^+,B^-)$, and take an approximating graph sequence $(A_n^+,B_n^-,G_n) \wstar (A^+,B^-,G)$ with $\linf M_a^\alpha(G_n)=M^\alpha(G)$. Then we have $M_a^\alpha(G) \le \linf \left[d_a^\alpha(A^+,A_n^+) + M_a^\alpha(G_n) + d_a^\alpha(B_n^-,B^-)\right]= M^\alpha(G)$.
+\end{proof}
+
+\par
+We conclude the section by showing that $d^\alpha$ is a metric.
+\begin{thm}[Metric on probabilities]
+$d^\alpha$ defined in Problem~\ref{prob:general} is a metrization of the weak-* topology on $\P(X)$.
+\end{thm}
+
+\begin{proof}[Proof]
+Again, positive definiteness and symmetry are trivial. Equivalence of topology has been shown above. It suffices to show subadditivity (triangle inequality).
+\par
+Let $\mu,\nu,\eta \in\P(X)$, take $(A_n,B_n,G_n) \wstar (\mu,\nu,G)$ and $(C_n,D_n,T_n) \wstar (\nu,\eta,T)$ be such that
+\begin{align*}
+& d^\alpha(\mu,\nu)=M^\alpha(G)=\l M_a^\alpha(G_n) =\l d_a^\alpha(A_n,B_n) \\
+\textrm{and } & d^\alpha(\nu,\eta)=M^\alpha(T)=\l M_a^\alpha(T_n) =\l d_a^\alpha(C_n,D_n).
+\end{align*}
+Then $d^\alpha(\mu,\eta) \le \linf d_a^\alpha(A_n,D_n) \le \linf \left[ d_a^\alpha(A_n,B_n) + d_a^\alpha(B_n,C_n) + d_a^\alpha(C_n,D_n) \right] = d^\alpha(\mu,\nu) + d^\alpha(\nu,\eta)$.
+\end{proof}
+
+
+\section{Geodesic Flow of Branched Optimal Transport and Geodesic Space } \label{sec:geodesic}
+In the context of the real world problem, recall that our ultimate goal is to find an optimal transport process specifying the quantities and the positions of goods for every time during the transportation. In other words, we are going to add time into our analysis and work with generalized flow, a measure $\gamma$ on spacetime $[0,1]\times X$, or precisely a curve $[0,1]\ni t \mapsto \gamma_t \in\P(X)$. (Although it is customary to call it ``spacetime'', here we put time as the first variable.) As soon as we find an admissible flow that obtains the $\alpha$-optimal cost given above, our model satisfy the property of recoverability mentioned in Section~\ref{sec:meta}, and we can claim that $\left( \P(X),d^\alpha \right)$ is a geodesic space for $\alpha\in(1-\frac{1}{m},1]$.
+
+\par
+Let's go back to the discrete case to construct a geodesic flow $C$ for atomic probabilities $A^+$ and $B^-$ first. The general case then follows from a weak-* limiting argument. Here we recycle the notations in Section~\ref{sec:discrete}. Recall that $C:=\{C_t\}_{t\in[0,1]} \subset \P_a(X)$ is a $d_a^\alpha$-geodesic flow connecting $A^+ =C_0$ and $B^- =C_1$ if and only if $\forall, 0\le t_0 < t_1 \le 1, d_a^\alpha(C_{t_0},C_{t_1})=(t_1-t_0) d_a^\alpha(C_0,C_1)$. Let $G$ be a minimizer of Problem~\ref{prob:discrete}, i.e. $M_a^\alpha(G)=d_a^\alpha(A^+,B^-)$. It is reasonable to expect that $\supp C_t =:\{z_i(t)\}_{i=1}^{k(t)} \subseteq G, \forall t\in[0,1]$, and if $z_i(t)$ is in the interior of the edge $e$, then $z_i(t)$ is the unique point in $\supp C_t$ with such property, and it has mass $w(e)$ and travels in the direction of $e$ with constant speed $s(e)\in\mathbb{R}_{++}$ so as to take advantage of economy of scale induced by the $\alpha$-cost functional. For now, it is more convenient and natural to consider the flow as a collection of functions of the form $[0,1]\ni t \mapsto z_i(t) \in\mathbb{R}^m$ instead of a measure on spacetime. The only thing we have to take care of is the vertices, at which points are combined and then redistributed. We would like the same cost increment right before and right after each vertex. The mathematical formulation is the cost momentum balance equation:
+$$\forall v\in V(G), [v]_\rightarrow \ne \emptyset \ne [v]_\leftarrow \Rightarrow \sum_{e^+ =v}w(e)^\alpha s(e) = \sum_{e^- =v}w(e)^\alpha s(e).$$
+If $\alpha=1$, then the expression $w(e)s(e)$ is indeed the (scalar) momentum of the point traveling along the edge $e$ in mechanics. The formula requires that the total cost momentum is preserved whenever the flow hits a vertex. It is also interesting to compare it with the (vector) balance equation in Section~\ref{sec:discrete}.
+\par
+In addition to the cost momentum balance equation, intuitively there should be no idle time in an optimal transport process. So the first departure leaves a vertex at the same time when the last arrival reaches the same vertex. (Note that if there is a source or target with degree greater than one, then the mass at the vertex will be deemed as the first arrival or the last departure, and that is why our intuition is phrased as above. Usually in other cases, all goods arrive and leave at the same time in an optimal process due to economy of scale.) We may thus assign each vertex with a time stamp, or equivalently define a function $\tau: V(G)\rightarrow \mathbb{R}$ to schedule the transport process for $G\in Forest(A^+,B^-)$. Note that physically we should require that $\forall e\in E(G), \tau(e^-) <\tau(e^+)$. In other words, $\tau$ respects the relation $\rightarrow$, or is a strict partial order homomorphism from $(V(G),\rightarrow)$ to $(\mathbb{R},<)$. In our setup, we already have $\tau(\supp A^+)={0}$ and $\tau(\supp B^-)={1}$ pre-specified. If we know $\tau$ on other vertices, the by linear interpolation in the interior of edges, it is easy to uniquely extend $\tau$ onto $\supp G$ and we would have $\supp C_t =\tau^{-1}(t)$. The question is whether we can find such a $\tau$ that is compatible with the cost momentum balance equation. The answer is affirmative as given by the following proposition.
+
+\begin{prop}[Unique existence of time table; Well-posedness of cost momentum balance equation]\label{prop:schedule}
+Let $F:=(V,E,c)$ be a weighted directed forest, with $\{x_i\}_{i=1}^k :=\{v\in V \,\big|\, [v]_\leftarrow =\emptyset \}$ and $\{y_j\}_{j=1}^l :=\{v\in V \,\big|\, [v]_\rightarrow =\emptyset \}$, where $c:E\rightarrow\mathbb{R}_{++}$ is the weight function. Given $\{s_i\}_{i=1}^k, \{t_j\}_{j=1}^l \subset \mathbb{R}$ with $\forall i\in[k], j\in[l], x_i \rightarrow y_j \Rightarrow s_i < t_j$ and $x_i=y_j \Rightarrow s_i=t_j$, there is a unique $\tau:V\rightarrow\mathbb{R}$ such that
+$$\forall e\in E, \tau(e^-) <\tau(e^+), \textrm{ and } \forall v\in V, \begin{cases}
+(\diamond) \quad \sum_{e^- =v} \frac{c(e)}{\tau(e^+)-\tau(v)} = \sum_{e^+ =v} \frac{c(e)}{\tau(v)-\tau(e^-)}, & [v]_\rightarrow \ne \emptyset \ne [v]_\leftarrow ;\\
+\tau(x_i)=s_i, & v=x_i \textrm{ for some }i\in[k]; \\
+\tau(y_j)=t_j, & v=y_j \textrm{ for some }j\in[l].
+\end{cases}$$
+Moreover, the function  $\left(\{s_i\}_{i=1}^k,\{t_j\}_{j=1}^l \right) \mapsto \tau \in\mathbb{R}^{\#V}$ is smooth, increasing and translation-invariant:
+$$\forall v\in V, \sum_{z\in\{x_i,y_j\}_{i\in[k],j\in[l]}} \frac{\partial \tau(v)}{\partial \tau(z)} =1, \forall z\in\{x_i,y_j\}_{i\in[k],j\in[l]}, \frac{\partial \tau(v)}{\partial \tau(z)} \begin{cases}
+=1, & z=v; \\
+\in(0,1), & v\notin \{x_i,y_j\}_{i\in[k],j\in[l]}, \textrm{ either } z\rightarrow v \textrm{ or } v\rightarrow z; \\
+=0, & \textrm{otherwise}.
+\end{cases}$$
+\end{prop}
+
+\begin{proof}
+We proceed by induction on the number of (directed graph) interior vertices, which are all $v$'s such that $[v]_\leftarrow \ne \emptyset \ne [v]_\rightarrow$. Other vertices are called (directed graph) boundary vertices.
+\par
+If $\left\{v\in V \,\big|\, [v]_\leftarrow \ne \emptyset \ne [v]_\rightarrow \right\} = \emptyset$, then define $\tau$ only by the boundary conditions and we are done.
+\par
+If $\left\{v\in V \,\big|\, [v]_\leftarrow \ne \emptyset \ne [v]_\rightarrow \right\} = \{v_0\}$, then define $\tau$ on the boundary vertices by the boundary conditions and we only need to study $\tau(v_0)$. Without loss of generality, write $[v_0]_\leftarrow=\{x_i\}_{i=1}^p$ and $[v_0]_\rightarrow=\{y_j\}_{j=1}^q$ for some $p\in[k]$ and $q\in[l]$. By the monotonicity condition $\tau(e^-)<\tau(e^+)$, the function $\left(\max_{1\le i\le p} s_i =:\underline{s},\overline{t}:=\min_{1\le j\le q} t_j \right) \ni t\mapsto f(t):=\sum_{e^- =v_0}\frac{c(e)}{\tau(e^+)-t} - \sum_{e^+ =v_0}\frac{c(e)}{t-\tau(e^-)}$ is continuous and strictly increasing taking $\mathbb{R}$ as its range. Thus, there is a unique zero of $f$ within $(\underline{s},\overline{t})$, which we assign to $\tau(v_0)$, i.e. set $\tau(v_0)$ such that $f\left(\tau(v_0)\right)=0$. Thus, $\tau$ satisfies the equation ($\diamond$) and is unique. Differentiability and derivative estimate of $\frac{\partial \tau(v_0)}{\partial x_i}$ and $\frac{\partial \tau(v_0)}{\partial y_j}$ are similar, and we show it for $x_i$. Fix $i_0\in[p]$, implicitly differentiate the equation $f(\tau(v_0))=0$ assuming only $\d s_{i_0} \ne 0$:
+\begin{align*}
+& \sum_{e^- =v_0}\frac{c(e)}{\tau(e^+)-\tau(v_0)} - \sum_{e^+ =v_0}\frac{c(e)}{\tau(v_0)-\tau(e^-)} =0 \quad
+\Rightarrow \quad \sum_{j=1}^q \frac{c((v_0,y_j))}{t_j-\tau(v_0)} - \sum_{i=1}^p \frac{c((x_i,v_0))}{\tau(v_0)-s_i} =0 \\
+\Rightarrow \quad & \sum_{j=1}^q \frac{c((v_0,y_j))}{\left(t_j-\tau(v_0)\right)^2} \d\tau(v_0) + \sum_{i=1}^p \frac{c((x_i,v_0))}{\left(\tau(v_0)-s_i\right)^2} \d\tau(v_0) - \frac{c((x_{i_0},v_0))}{\left(\tau(v_0)-s_{i_0}\right)^2} \d s_{i_0} =0 \\
+\Rightarrow \quad & \frac{\partial \tau(v_0)}{\partial s_{i_0}} = \frac{\frac{c((x_{i_0},v_0))}{\left(\tau(v_0)-s_{i_0}\right)^2}}{\sum_{e^-=v_0}\frac{c(e)}{\left(\tau(e^+)-\tau(v_0)\right)^2} + \sum_{e^+=v_0} \frac{c(e)}{\left(\tau(v_0)-\tau(e^-)\right)^2}} \in (0,1).
+\end{align*}
+Clearly, $\sum_{i=1}^p \frac{\partial \tau(v_0)}{\partial s_i}+ \sum_{j=1}^q \frac{\partial \tau(v_0)}{\partial t_j}=1$, and other partial derivatives of $\tau(v_0)$ are zero.
+\par
+Now suppose that for any weighted directed forest $\tilde{F}$ with $\#\left\{v\in V(\tilde{F}) \,\big|\, [v]_\leftarrow \ne \emptyset \ne [v]_\rightarrow \right\} \le N\in\mathbb{N}_+$, the claim is true. Suppose that $F$ is a weighted directed forest with $\#\left\{v\in V(F) \,\big|\, [v]_\leftarrow \ne \emptyset \ne [v]_\rightarrow \right\} =N+1$. We show that the claim is also true for $F$.
+\par
+Note that we must have some $v_0\not\in\{y_j\}_{j=1}^l$ with $[v_0]_\leftarrow \subseteq \{x_i\}_{i=1}^k$.  Without loss of generality, write $[v_0]_\leftarrow=\{x_i\}_{i=1}^p$ and $[v_0]_\rightarrow=\{y_j\}_{j=1}^q$, where $p\in[k]$ and $q\in[l]$. Let $\tilde{F}$ be the sub-forest of $F$ by removing the edges $(x_i,v_0),i\in[p]$ (while keeping the vertices $x_i$'s so that $V(\tilde{F})=V(F)=V$). $\tilde{F}$ satisfies the premise in the inductive hypothesis, so we have that $\forall r <\overline{t}:=\min_{1\le j\le q}, \exists \tilde{\tau}(r):V \rightarrow \mathbb{R}$ satisfying the claim with the boundary conditions $\tilde{\tau}(r)(v_0)=r$, $\forall i\in[k], \tilde{\tau}(r)(x_i)=s_i$, and $\forall j\in[l], \tilde{\tau}(r)(y_j)=t_j$. We now define the desired function $\tau:V \rightarrow \mathbb{R}$ by setting $\tau:=\tilde{\tau}(r_0)$ for properly  chosen $r_0\in \left(\underline{r}, \overline{t}\right)$, where $\underline{r}:= \max_{1\le i\le p} s_i$. Consider the function $\left(\underline{r},\overline{t}\right) \ni r \mapsto g(r):=\sum_{e^- =v_0}\frac{c(e)}{\tilde{\tau}(r)(e^+)-r} - \sum_{e^+ =v_0}\frac{c(e)}{r-\tilde{\tau}(r)(e^-)}$. By the inductive hypothesis, $g$ is continuous and strictly increasing with range $\mathbb{R}$, since $\frac{\partial \tilde{\tau}(r)(e^\pm)}{\partial r}\in[0,1]$ and $\tilde{\tau}(r)(e^-) \le \underline{r} <r<\tilde{\tau}(r)(e^+) \le \overline{t}$. Thus $g$ has a unique zero $r_0\in(\underline{r},\overline{t})$, and we set $\tau(v_0):=r_0$ and hence $\tau$ is the unique function satisfying the equation ($\diamond$) in the claim. It remains to check the partial derivatives of $\tau$. $\forall v\in V, z\in \{x_i,y_j\}_{i\in[k],j\in[l]}, \frac{\partial \tau(v)}{\partial \tau(z)} = \frac{\partial \tilde{\tau}(r_0)(v)}{\partial \tilde{\tau}(r_0)(z)} + \frac{\partial \tilde{\tau}(r_0)(v)}{\partial r_0} \frac{\partial r_0}{\partial \tau(z)}$. Fix $z_0$, a boundary vertex of $F$. Implicitly differentiate $g(r_0)=0$ assuming only $\d\tau(z_0) \ne 0$, we have
+\begin{align*}
+& \sum_{e^- =v_0} \frac{c(e)}{\tilde{\tau}(r_0)(e^+)-r_0} - \sum_{e^+ =v_0} \frac{c(e)}{r_0-\tilde{\tau}(r_0)(e^-)} =0 \quad 
+\Rightarrow \quad \sum_{h=\pm}\sum_{e^{-h} =v_0} \frac{c(e)}{\tilde{\tau}(r_0)(e^h)-r_0} =0 \\
+\Rightarrow \quad & \sum_{h=\pm}\sum_{e^{-h} =v_0} \frac{c(e)}{\left(\tilde{\tau}(r_0)(e^h)-r_0\right)^2} \left[ \left(1-\frac{\partial \tilde{\tau}(r_0)(e^h)}{\partial r_0}\right) \d r_0 - \frac{\partial \tilde{\tau}(r_0)(e^h)}{\partial \tilde{\tau}(r_0)(z_0)} \d\tau(z_0) \right] =0 \\
+\Rightarrow \quad & \frac{\partial r_0}{\partial \tau(z_0)} = \frac{\sum_{h=\pm}\sum_{e^{-h} =v_0} \frac{c(e)}{\left( \tilde{\tau}(r_0)(e^h)-r_0 \right)^2} \frac{\partial \tilde{\tau}(r_0)(e^h)}{\partial \tilde{\tau}(r_0)(z_0)} }{\sum_{h=\pm}\sum_{e^{-h} =v_0} \frac{c(e)}{\left( \tilde{\tau}(r_0)(e^h)-r_0 \right)^2} \left(1-\frac{\partial \tilde{\tau}(r_0)(e^h)}{\partial r_0} \right)}.
+\end{align*}
+By inductive hypothesis, $\forall v\in V, \sum_{z\in \{x_i,y_j\}_{i\in[k],j\in[l]}} \frac{\partial \tilde{\tau}(r_0)(v)}{\partial \tilde{\tau}(r_0)(z)} + \frac{\partial \tilde{\tau}(r_0)(v)}{\partial r_0} =1$, so $\frac{\partial r_0}{\partial \tau(z_0)} \in[0,1]$ and $\sum_{z\in \{x_i,y_j\}_{i\in[k],j\in[l]}} \frac{\partial r_0}{\partial \tau(z)} =1$. Therefore, $\sum_{z\in \{x_i,y_j\}_{i\in[k],j\in[l]}} \frac{\partial \tau(v)}{\partial \tau(z)} =1$ and each $\frac{\partial \tau(v)}{\partial \tau(z)} \in[0,1]$. It is also easy to see when $\frac{\partial \tau(v)}{\partial \tau(z)}$ takes value $1,0$, and $(0,1)$.
+\end{proof}
+
+\begin{rem}[Continuous schedule and mass function]
+The equation ($\diamond$) may be treated as a partial difference/differential equation on the forest $F$. Proposition~\ref{prop:schedule} says that the boundary value problem is well-posed and satisfies a ``decay'' condition provided the boundary data ``decay'' as well. Note that certain $x_i$ and $y_j$ may coincide if $[x_i]_\rightarrow =\emptyset= [y_j]_\leftarrow$, so we have to specify $x_i=y_j \Rightarrow s_i=t_j$ in the ``decay'' condition since the relation $\rightarrow$ is irreflexive.  As promised, we extend $\tau$ to $\supp F \subset \mathbb{R}^m$ by interpolation: if $z=r e^- + (1-r) e^+$ for some (unique) edge $e=(e^-,e^+) \in E$ and some (unique) $r\in(0,1)$, then set $\tau(z):=r\tau(e^-)+(1-r)\tau(e^+)$. The discrete time table now induces a unique consistent continuous time schedule. Observe that the continuous version $\tau: \supp F \rightarrow \mathbb{R}$ is continuous and also order-preserving. Similarly, the mapping $\left( \{s_i\}_{i=1}^k, \{t_j\}_{j=1}^l \right) \mapsto \tau$ is smooth, increasing, and translation-invariant, too.
+\par
+Next, we illustrate the significance of Proposition~\ref{prop:schedule}. If $G:=(V,E,w)\in Forest(A^+,B^-)$ and set $F:=(V,E,c)$ such that $c(e):=w(e)^\alpha |e|, \forall e\in E$, then the equation ($\diamond$) becomes the cost momentum balance equation, where $s(e)=\frac{|e|}{\tau(e^+)-\tau(e^-)}$. Define $\tau_G:\supp G \rightarrow \mathbb{R}$ to be the function given by Proposition~\ref{prop:schedule} with boundary data $\tau_G\!\!\restriction_{\{v\in V \,|\, [v]_\leftarrow =\emptyset \ne [v]_\rightarrow \}} \equiv 0$, $\tau_
+G\!\!\restriction_{\{v\in V \,|\, [v]_\leftarrow \ne\emptyset= [v]_\rightarrow \}} \equiv 1$, and $\tau_
+G\!\!\restriction_{\{v\in V \,|\, [v]_\leftarrow =\emptyset= [v]_\rightarrow \}} \equiv -1$. Here $-1$ is used as a flag to preserve symmetry in the boundary data and it should not be considered a time. $\tau_G^{-1}(\{-1\})$ are the points that do not move in the transport process, i.e. locations where sources and targest coincide. This is the time schedule we are looking for to construct the flow $C$.
+\par
+Another ingredient for the flow $C$ is the mass function in terms of position, 
+$m_G:\supp G \rightarrow \mathbb{R}_{++}$ given by
+$$m_G(z):=
+\begin{cases}
+\sum_{e^+=z}w(e) +\sum_{x_i=z}a_i =\sum_{e^-=z}w(e) +\sum_{y_j=z}b_j, & z\in V; \\
+w(e), & z\not\in V, z\in e\in E.
+\end{cases}$$
+Unlike $\tau_G$, $m_G$ is discontinuous, but jumps only at vertices while stays constant inside the interior of each edge.
+\end{rem}
+
+The following theorem gives what we have been longing for in the discrete case.
+
+\begin{thm}[Cost-realizing flow; Geodesic flow in discrete case]
+\begin{align*}
+& C:= \left\{ C_t:=\sum_{z\in \tau_G^{-1}(\{t,-1\})} m_G(z) \delta_z  + A^+\!\!\restriction_{\tau_G^{-1}((t,1])} + B^-\!\!\restriction_{\tau_G^{-1}([0,t))} \right\}_{t\in[0,1]} \\
+\Rightarrow \quad & C_0=A^+, C_1=B^-, \forall 0\le t\le 1, C_t \in\P_a(X), G\!\!\restriction_{\tau_G^{-1}\left([0,t]\right)} \in Forest(C_0,C_t) \textrm{ and } M_a^\alpha \left(G\!\!\restriction_{\tau_G^{-1}\left([0,t]\right)} \right) = t M_a^\alpha(G).
+\end{align*}
+In particular, if $G$ is a solution to Problem~\ref{prob:discrete}, then $C$ is a geodesic flow from $A^+$ to $B^-$.
+\end{thm}
+
+\begin{proof}
+One can check that $C_0=A^+$ and $C_1=B^-$ by definition of $\tau_G$. Observe that $\tau_G^{-1}(\{-1\})=\left\{ x_i=y_j \,\big|\, i\in[k], j\in[l], a_i=b_j \right\}$, $\supp A^+ \cap \tau_G^{-1}((0,1]) = \left\{ x_i \,\big|\, [x_i]_\leftarrow \ne \emptyset, i\in[k] \right\}$, and $\supp B^- \cap \tau_G^{-1}([0,1)) = \left\{ y_j \,\big|\, [y_j]_\rightarrow \ne \emptyset, j\in[l] \right\}$, which are points that stand still (to wait for other goods) for some time intervals, so we add them back to make the identities hold.
+\par
+To show that $C_t \in\P_a(X)$, it suffices to show that $\mathrm{div}\, \left( G\!\!\restriction_{\tau_G^{-1}([0,t])} \right) = C_0 - C_t$, then we also have $G\!\!\restriction_{\tau_G^{-1}\left([0,t]\right)} \in Forest(C_0,C_t)$. But 
+$$C_0 - C_t = A^+ - \left[ \sum_{z\in \tau_G^{-1}(\{t,-1\})} m_G(z) \delta_z  + A^+\!\!\restriction_{\tau_G^{-1}((t,1])} + B^-\!\!\restriction_{\tau_G^{-1}([0,t))} \right] = A^+\!\!\restriction_{\tau_G^{-1}([0,t])} - B^-\!\!\restriction_{\tau_G^{-1}([0,t])} - \sum_{z\in \bigcap_{s>t}\tau_G^{-1}((t,s))} m_G(z) \delta_z,$$
+where we use the definition of $m_G$ and $\tau_G$ to single out the last term. Since $\mathrm{div}\, G = A^+ - B^-$, apply the distributional divergence theorem with boundary, we have exactly the Kirchoff's Law $\mathrm{div}\, \left( G\!\!\restriction_{\tau_G^{-1}([0,t])} \right) = C_0 - C_t$.
+\par
+It remains to show that $f(t):= M_a^\alpha\left(G\!\!\restriction_{\tau_G^{-1}([0,t])}\right)$ has constant slope, because we already know $f(0)=0$ and $f(1)=M_a^\alpha(G)$. Recall that by Remark~\ref{rem:eqv}, $M_a^\alpha \left(G\!\!\restriction_{\tau_G^{-1}([0,t])}\right) = \int_{\tau_G^{-1}([0,t])} \left(\frac{\d G}{\d\H}\right)^\alpha \d\H$, so $f$ is continuous as $\H\left( \tau_G^{-1}(\{t\}) \right) =0$. Since $\tau_G(V(G))$ is finite, we may write $\left(\tau_G(V(G)) \cap (0,1)\right) \cup \{0,1\} =: \{0=:t_0 < t_1 < \cdots < t_N:=1 \}$ for some $N\in \mathbb{N}_+$. By definition of $\tau_G$, we have $\forall i\in[N], t\in(t_{i-1},t_i), \tau_G^{-1}(t) = \frac{t_i-t}{t_i-t_{i-1}} \tau_G^{-1}(t_{i-1}) + \frac{t-t_{i-1}}{t_i-t_{i-1}} \tau_G^{-1}(t_i) \subset \supp G\backslash V(G)$, i.e. all points are in the interior of edges. So
+\begin{align*}
+\forall t_{i-1}<s<t<t_i, & f(t)-f(s) = \int_{\tau_G^{-1}([s,t])} \left(\frac{\d G}{\d\H}\right)^\alpha \d\H = M_a^\alpha \left(G\!\!\restriction_{\tau_G^{-1}([s,t])}\right) = \sum_{\tau_G^{-1}([s,t]) \ni z\in e\in E(G)} w(e)^\alpha \frac{t-s}{t_i-t_{i-1}}|e| \\
+= & (t-s) \sum_{\tau_G^{-1}(\{t\}) \ni z\in e\in E(G)} \frac{w(e)^\alpha|e|}{t_i-t_{i-1}} = (t-s) \sum_{\tau_G^{-1}\left(\left\{ \frac{t_{i-1}+t_i}{2} \right\}\right) \ni z\in e\in E(G)} \frac{w(e)^\alpha|e|}{t_i-t_{i-1}} =:(t-s) g(t_{i-1},t_i).
+\end{align*}
+Thus $f'(t)\equiv g(t_{i-1},t_i), \forall t \in(t_{i-1},t_i)$. We only need to verify that $\forall i\in[N-1], f'(t_i^-)=g(t_{i-1},t_i) = g(t_i,t_{i+1}) = f'(t_i^+)$ to finish the proof. But this is just the cost momentum balance equation guaranteed by the construction of $\tau_G$. Thus, we have that $f'\equiv c$ for some constant $c\in\mathbb{R}$ as desired.
+\par
+The last statement of the theorem follows immediately.
+\end{proof}
+
+\par
+The above theorem asserts that $(\P_a(X),d_a^\alpha)$ is a geodesic space. More importantly, we can lift it to the general case for $\alpha\in \left(1-\frac{1}{m}, 1\right]$.
+\par
+Before we do that, observe that $G\!\!\restriction_{\tau_G^{-1}\left([s,t]\right)}$ is a vectorial measure on $X$, and hence $G\!\!\restriction_{\tau_G^{-1}}: \mathcal{B}\left([0,1] \times X \right) \rightarrow \mathbb{R}^m$ is a vectorial measure on the spacetime $[0,1] \times X$. Indeed, it is the pushforward measure of $G$ by the function $(\tau_G,Id)$, i.e. $G\!\!\restriction_{\tau_G^{-1}} = (\tau_G,Id)_\# G =:\overline{G}$, and hence $G\!\!\restriction_{\tau_G^{-1}([s,t])} = \left[(\tau_G,Id)_\# G\right]\left([s,t],\cdot \right) =\overline{G}([s,t],\cdot) =\left(\pi_X\!\!\restriction_{[s,t]\times X}\right)_\# \overline{G}$, where $\pi_X:[0,1]\times X \rightarrow X$ is the projection onto space $X$. Given such a measure $\overline{G}$ on spacetime, we can easily recover the flow $\{C_t\}_{t\in[0,1]}$ by setting $C_t:=C_0 - \mathrm{div}\,\left( \overline{G}([0,t],\cdot) \right)$. Compare this observation with Remark~\ref{rem:eqv}. We now give $\overline{G}$ in the general case in the next theorem, which finishes our search for optimal flow.
+
+\begin{thm}[Geodesic flow in general case]
+Let $\alpha\in \left(1-\frac{1}{m},1\right], \mu^+, \mu^- \in\P(X)$, and $T\in Path(\mu^+,\mu^-)$ such that as $n\rightarrow \infty$, $(A_n^+,B_n^+,G_n) \wstar (\mu^+,\mu^-,T)$ for some approximating graph sequence $\left\{\left(A_n^+\in\P_a(X), B_n^-\in\P_a(X), G_n\in Forest(A_n^+,B_n^-) \right)\right\}_{n=1}^\infty$ with $M^\alpha(T)=\l M_a^\alpha(G_n)$. Then there is a vectorial measure $\overline{T}:\mathcal{B}\left([0,1] \times X\right) \rightarrow \mathbb{R}^m$ such that $\left(\pi_X\right)_\# \overline{T}=T$ and $\forall t\in[0,1]$, $M^\alpha \left( \overline{T}([0,t],\cdot) \right)=t M^\alpha(T)$. Moreover, $\gamma:= \left\{\gamma_t:=\mu^+ - \mathrm{div}\,\left( \overline{T}([0,t],\cdot) \right) \right\}_{t\in[0,1]} \subset \P(X)$ is a (generalized) flow.
+\par
+In particular, if $T$ is a solution to Problem~\ref{prob:general}, then $\gamma$ is a geodesic flow from $\mu^+$ to $\mu^-$.
+\end{thm}
+
+\begin{proof}
+As in the observation above, let $\overline{G_n}:= (\tau_{G_n},Id)_\# G_n$. Note that $\left\Vert \overline{G_n} \right\Vert = \Vert G_n \Vert \le M_a^\alpha(G_n), \forall n\in\mathbb{N}_+$, which is uniformly bounded. By weak-* compactness of measures on $[0,1]\times X$, up to a subsequence, $\overline{G_n} \wstar \overline{T}$ for some vectorial measure $\overline{T}$ on $[0,1]\times X$. Clearly, $G_n =\left(\pi_X\right)_\# \overline{G_n} \wstar \left(\pi_X\right)_\# \overline{T}$ and by uniqueness of weak-* limit, $\left(\pi_X\right)_\# \overline{T} = T$.
+\par
+Since $\overline{G_n}(\{t\}\times X) =0$ due to $\H\left(\tau_{G_n}^{-1}(\{t\})\right) =0$, we have that $\overline{G_n}([s,t],\cdot) \wstar \overline{T}([s,t],\cdot), \forall 0\le s<t \le 1$. By definition,
+$$M^\alpha\left( \overline{T}([s,t],\cdot) \right) \le \linf M_a^\alpha\left( \overline{G_n}([s,t],\cdot) \right) = \l (t-s) M_a^\alpha(G_n) = (t-s) M^\alpha(T).$$
+But $\overline{T}([0,1],\cdot) = T$, so we must have $M^\alpha \left( \overline{T}([0,t],\cdot) \right) = t M^\alpha(T), \forall t\in[0,1]$.
+\par
+The remaining claims are direct consequences of the above result.
+\end{proof}
+
+So $(\P(X),d^\alpha)$ is also a geodesic space, finishing our discussion of the desired property recoverability.
+\par
+We conclude this section and the document with a remark. Reviewing the techniques in the above proof, we could have taken another route in the development of our theory which includes the situation of spacetime and geodesics as a special case. Instead of working with the Euclidean norm $|\cdot|$ on the space $X$, we could have worked with a general pseudo-norm (even asymmetric pseudo-distance since the graph is directed) on $X$ and established the existence and metrization results in discrete and general cases. Once it is done, we may view our spacetime $\overline{X}:= [0,1]\times X$ as the space equipped with the pseudo-norm that ``does not see time only'', i.e. $|(t,x)|_{\overline{X}} = |x|_X$. Then replace our source $A^+ \in\P_a(X)$ with $\overline{A^+}:=(\delta_0 \times A^+) \in\P_a(\overline{X})$ and target $B^- \in\P_a(X)$ with $\overline{B^-}:= (\delta_1 \times B^-) \in\P_a(\overline{X})$. It is easy to see that if $\overline{G}\in Path_a(\overline{A^+},\overline{B^-})$, then $\pi_X\left[(\pi_X)_\# \overline{G}\right] \in Path_a(A^+,B^-)$ (the first $\pi_X$ disgards the time component in the direction of the transport path since here $\overline{G}$ outputs $\mathbb{R}^{m+1}$, unlike the proof above), and $\overline{M_a^\alpha}(\overline{G}) \ge M_a^\alpha(G)$ (the actual cost will rise if the scheduling does not take advantage of combination). But it is obvious that $\overline{d_a^\alpha}(\overline{A^+},\overline{B^-}) = d_a^\alpha(A^+,B^-)$. Thus, we can solve Problem~\ref{prob:discrete} by solving the spacetime analogue in $\left( \overline{X},|\cdot|_{\overline{X}} \right)$. To obtain geodesics in $X$, all we need is a continuous (percentage) cost ``tracker'' $c(t):= \overline{M_a^\alpha} \left( \overline{G}\!\!\restriction_{[0,t] \times X} \right) / \overline{M_a^\alpha} \left( \overline{G} \right)$ (continuity gives us a right-inverse, and physically it says that goods cannot be transported instantaneously), then the geodesics is given by $C_t := A^+ - \mathrm{div}\,\left(  (\pi_X \overline{G})([0,c^{-1}(t)],\cdot) \right)$.
+
+\bibliographystyle{plain}
+\bibliography{References}
+
+\end{document}
